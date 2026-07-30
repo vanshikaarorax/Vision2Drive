@@ -1,0 +1,194 @@
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                                  Vision2Drive                                            │
+│                 End-to-End Autonomous Driving using                                      │
+│      Vision Transformer + Sensor Fusion + Behavior Cloning + PPO                         │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+
+
+                                        Dataset
+                                           │
+                                           │
+                        ┌──────────────────┴──────────────────┐
+                        │                                     │
+                        ▼                                     ▼
+               MetaDrive Simulator                 Human Demonstrations
+          (Camera, LiDAR, State, Nav)            (Expert Driving Policy)
+                        │                                     │
+                        └──────────────────┬──────────────────┘
+                                           │
+                                           ▼
+                               Data Collection Pipeline
+                                           │
+                                           ▼
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                                data/                                                     │
+│                                                                                          │
+│ raw/                 processed/                  splits/                                 │
+│ ├── rgb              ├── train.pkl              ├── train.json                           │
+│ ├── lidar            ├── val.pkl                ├── val.json                             │
+│ ├── state            └── test.pkl               └── test.json                            │
+│ └── navigation                                                                    │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+                                           │
+                                           ▼
+┌──────────────────────────────────────────────────────────────────────────────────────────┐
+│                              Dataset Loader                                              │
+│                                                                                          │
+│ dataset.py                                                                               │
+│ transforms.py                                                                            │
+│ dataloader.py                                                                            │
+│                                                                                          │
+│ Output                                                                                   │
+│ • RGB Images                                                                             │
+│ • LiDAR                                                                                  │
+│ • Vehicle State                                                                          │
+│ • Navigation                                                                             │
+│ • Expert Action                                                                          │
+└──────────────────────────────────────────────────────────────────────────────────────────┘
+                                           │
+                                           ▼
+══════════════════════════════════════════════════════════════════════════════════════════════
+                              Behavior Cloning Training
+══════════════════════════════════════════════════════════════════════════════════════════════
+
+                             Training Batch
+                                   │
+        ┌───────────────┬──────────────┬───────────────┬──────────────┐
+        │               │              │               │
+        ▼               ▼              ▼               ▼
+      RGB            LiDAR      Vehicle State     Navigation
+        │               │              │               │
+        └───────────────┴──────────────┴───────────────┘
+                                │
+                                ▼
+                    Multi-Modal Feature Extraction
+                                │
+        ┌───────────────────────┼────────────────────────┐
+        │                       │                        │
+        ▼                       ▼                        ▼
+ Vision Transformer       LiDAR Encoder          State Encoder
+        │                       │                        │
+        └───────────────────────┼────────────────────────┘
+                                ▼
+                       Feature Fusion Layer
+                                │
+                                ▼
+                      Transformer Fusion Blocks
+                                │
+                                ▼
+                        Driving Policy Head
+                                │
+                                ▼
+          Steering • Throttle • Brake Prediction
+                                │
+                                ▼
+                        Supervised Loss
+                                │
+                                ▼
+                           Backpropagation
+                                │
+                                ▼
+                      behavior_cloning.pth
+
+
+══════════════════════════════════════════════════════════════════════════════════════════════
+                       Reinforcement Learning Fine-Tuning
+══════════════════════════════════════════════════════════════════════════════════════════════
+
+                 Pretrained Behavior Cloning Policy
+                                │
+                                ▼
+                      PPO Actor-Critic Network
+                                │
+                                ▼
+                         MetaDrive Environment
+                                │
+      ┌─────────────────────────┼────────────────────────┐
+      │                         │                        │
+      ▼                         ▼                        ▼
+ Observation                Reward                 Done Signal
+      │
+      ▼
+ Observation Processing
+      │
+      ▼
+ Policy Forward Pass
+      │
+      ▼
+Continuous Action Distribution
+      │
+      ▼
+ Action Sampling
+      │
+      ▼
+ MetaDrive Step
+      │
+      ▼
+ Trajectory Buffer
+      │
+      ▼
+ Return Computation
+      │
+      ▼
+ Generalized Advantage Estimation
+      │
+      ▼
+ PPO Loss
+      │
+      ▼
+ Optimizer Step
+      │
+      ▼
+ vision2drive_ppo_final.pth
+
+
+══════════════════════════════════════════════════════════════════════════════════════════════
+                               Evaluation Pipeline
+══════════════════════════════════════════════════════════════════════════════════════════════
+
+                     Trained PPO Model
+                            │
+                            ▼
+                    inference.py
+                            │
+                            ▼
+                   MetaDrive Environment
+                            │
+                            ▼
+                   Episode Recorder
+                            │
+                            ▼
+                      metrics.py
+                            │
+                            ▼
+                  Evaluation Statistics
+                            │
+        ┌───────────────────┼────────────────────┐
+        │                   │                    │
+        ▼                   ▼                    ▼
+   visualize.py      benchmark.py          JSON / CSV
+        │                   │
+        ▼                   ▼
+    Evaluation       BC vs PPO Comparison
+       Figures
+
+
+══════════════════════════════════════════════════════════════════════════════════════════════
+                                   Outputs
+══════════════════════════════════════════════════════════════════════════════════════════════
+
+checkpoints/
+├── behavior_cloning.pth
+└── vision2drive_ppo_final.pth
+
+results/
+├── reward_curve.png
+├── trajectory.png
+├── steering_distribution.png
+├── throttle_distribution.png
+├── brake_distribution.png
+├── speed_distribution.png
+├── success_rate.png
+├── benchmark.json
+├── metrics.json
+└── metrics.csv
