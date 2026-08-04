@@ -1,0 +1,233 @@
+Many beginners think:
+
+RGB Features
+
++
+
+LiDAR Features
+
+↓
+
+Concatenate
+
+↓
+
+MLP
+
+↓
+
+Driving
+
+This is called early feature fusion.
+
+It works...
+
+But it's actually a very weak way to combine information.
+
+Suppose RGB says
+
+"There is a pedestrian."
+
+LiDAR says
+
+"There is an obstacle."
+
+Distance = 7.8m
+
+If we simply concatenate them:
+
+[RGB Features | LiDAR Features]
+
+the network has to learn the relationship indirectly.
+
+Instead, the transformer asks questions like:
+
+RGB Feature #142
+
+↓
+
+Which LiDAR features
+are important to me?
+
+↓
+
+Attention
+
+↓
+
+Fuse only relevant information
+
+That is cross-attention.
+
+Instead of blindly mixing everything, it learns what should interact with what.
+
+Think of it like two people
+
+Imagine:
+
+Person A
+
+Camera
+
+=================
+
+Person B
+
+LiDAR
+
+Without a transformer:
+
+A writes notes
+
+B writes notes
+
+↓
+
+Staple together
+
+↓
+
+Done
+
+Nobody discusses anything
+
+
+IMPORTANTTTTTTTTTTTTTT
+
+RGB Tokens
+
+49
+
+        │
+
+        ▼
+
+Cross Attention
+
+        ▲
+
+        │
+
+LiDAR Tokens
+
+49
+
+
+
+
+
+
+RGB
+
+↓
+
+Image Encoder
+
+↓
+
+RGB Tokens
+
+────────────┐
+
+            │
+
+            ▼
+
+      Transformer
+
+            ▲
+
+            │
+
+────────────┘
+
+LiDAR
+
+↓
+
+BEV
+
+↓
+
+LiDAR Encoder
+
+↓
+
+LiDAR Tokens
+
+↓
+
+Fused Tokens
+
+↓
+
+State Fusion
+
+↓
+
+Driving Head
+
+
+
+
+
+
+RGB
+
+↓
+
+Image Encoder
+
+↓
+
+RGB Features
+
+───────────────┐
+
+               │
+
+               ▼
+
+          Transformer
+
+               ▲
+
+               │
+
+───────────────┘
+
+LiDAR
+
+↓
+
+Encoder
+
+↓
+
+LiDAR Features
+
+↓
+
+Scene Representation
+
+───────────────────────────
+
+Vehicle State
+
+───────────────────────────
+
+Navigation State
+
+───────────────────────────
+
+↓
+
+Feature Fusion
+
+↓
+
+Driving Representation
+
+↓
+
+Driving Head

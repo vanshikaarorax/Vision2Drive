@@ -1,0 +1,77 @@
+Expert Driving Dataset
+
+↓
+
+DataLoader
+
+↓
+
+Loss Function
+
+↓
+
+Optimizer
+
+↓
+
+Training Loop
+
+↓
+
+Validation
+
+↓
+
+Checkpoint Saving
+
+↓
+
+Inference
+
+
+Phase 1 - Data Collection                  ✅ DONE
+-----------------------------------------
+CARLA Simulator
+Expert Driver
+Record RGB
+Record LiDAR
+Record Vehicle State
+Record Navigation
+Record Expert Controls
+
+↓
+
+Phase 2 - Dataset                          ✅ DONE
+-----------------------------------------
+Dataset Class
+DataLoader
+Transforms
+LiDAR → BEV
+
+↓
+
+Phase 3 - Vision2Drive Model               ✅ DONE
+-----------------------------------------
+Image Encoder
+LiDAR Encoder
+Transformer
+Feature Fusion
+Driving Head
+
+↓
+
+Phase 4 - Training                         ❌ NEXT
+-----------------------------------------
+Loss Function
+Optimizer
+Training Loop
+Validation
+Checkpoint Saving
+
+↓
+
+Phase 5 - Inference                        ❌
+-----------------------------------------
+Load Best Model
+Predict Controls
+Drive CARLA Vehicle

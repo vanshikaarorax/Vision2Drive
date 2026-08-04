@@ -1,0 +1,46 @@
+sample = {
+    "image": image,      # RGB (3×224×224)
+    "lidar": lidar,      # BEV (5×200×200)
+    "state": state,      # Vehicle state
+    "action": action     # Ground-truth controls
+}
+
+where:
+
+image
+│
+├── RGB Camera
+
+lidar
+│
+├── BEV LiDAR
+
+state
+│
+├── Speed
+├── (other vehicle state values)
+
+action
+│
+├── Steering
+├── Throttle
+└── Brake
+
+The action is exactly what the model is supposed to learn.
+
+I also remember another important detail
+
+Your data collection pipeline (team_code_autopilot) was acting as the expert driver.
+
+It records things like:
+
+RGB Camera          ✅
+LiDAR               ✅
+GPS                 ✅
+IMU                 ✅
+Speed               ✅
+Expert Steering     ✅
+Expert Throttle     ✅
+Expert Brake        ✅
+
+Those expert actions become the labels for imitation learning.

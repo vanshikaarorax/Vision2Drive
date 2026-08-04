@@ -1,0 +1,76 @@
+Raw Point Cloud
+
+        │
+
+        ▼
+
+Load Point Cloud
+
+        │
+
+        ▼
+
+Filter Points
+
+        │
+
+        ▼
+
+Clip Driving Area
+
+        │
+
+        ▼
+
+Project XY Coordinates
+
+        │
+
+        ▼
+
+Create Occupancy Grid
+
+        │
+
+        ▼
+
+Normalize Grid
+
+        │
+
+        ▼
+
+BEV Tensor
+
+(1 × 200 × 200)
+
+lidar encoding
+
+
+BEV Tensor
+
+(1×200×200)
+
+        │
+
+        ▼
+
+Conv Layer
+
+        │
+
+        ▼
+
+Residual Layers
+
+        │
+
+        ▼
+
+High-Level Spatial Features
+
+        │
+
+        ▼
+
+(512×7×7)

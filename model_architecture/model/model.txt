@@ -1,0 +1,146 @@
+What is a Head?
+
+A "head" is simply the prediction layer at the end of a neural network.
+
+Examples
+
+Image Classification
+
+CNN
+
+↓
+
+Classification Head
+
+↓
+
+Dog
+
+Object Detection
+
+Backbone
+
+↓
+
+Detection Head
+
+↓
+
+Bounding Boxes
+
+Segmentation
+
+Encoder
+
+↓
+
+Segmentation Head
+
+↓
+
+Pixel Labels
+
+Our project
+
+Driving Representation
+
+↓
+
+Driving Head
+
+↓
+
+Steer
+
+Throttle
+
+Brake
+
+
+
+model.py flow
+
+
+
+RGB Image
+
+↓
+
+Image Encoder
+
+↓
+
+RGB Features
+
+──────────────────────────────
+
+LiDAR
+
+↓
+
+BEV
+
+↓
+
+LiDAR Encoder
+
+↓
+
+LiDAR Features
+
+──────────────────────────────
+
+↓
+
+Transformer
+
+↓
+
+Fused Feature Map
+
+↓
+
+Global Average Pooling
+
+↓
+
+Scene Vector
+
+↓
+
+Vehicle Encoder
+
+↓
+
+Navigation Encoder
+
+↓
+
+Feature Fusion
+
+↓
+
+Driving Representation
+
+↓
+
+Driving Head
+
+↓
+
+Steering
+
+Throttle
+
+Brake
+
+
+
+Why do we save the "best model"?
+
+Suppose your validation loss looks like this:
+
+
+The best-performing weights were from Epoch 4, not the final epoch.
+
+If you simply saved the model after Epoch 7, you'd actually keep a worse version.

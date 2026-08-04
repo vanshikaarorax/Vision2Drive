@@ -1,0 +1,651 @@
+                                           ┌────────────────────────────────────────────┐
+                                           │            OFFLINE STAGE (Once)            │
+                                           └────────────────────────────────────────────┘
+
+     ┌────────────────────────────────────────────────────────────────────────────────────────────┐
+     │                              PUBLIC DATASETS                                               │
+     └────────────────────────────────────────────────────────────────────────────────────────────┘
+
+     COCO             TuSimple/CULane           NYU/KITTI          GTSRB
+       │                    │                      │                  │
+       ▼                    ▼                      ▼                  ▼
+   Train/Finetune       Train/Finetune       Pretrained/FT      Train/Finetune
+       │                    │                      │                  │
+       ▼                    ▼                      ▼                  ▼
+    YOLO11 Model      LaneNet Model          MiDaS Model      Traffic Sign Model
+       │                    │                      │                  │
+       └────────────────────┬──────────────────────┴──────────────────┘
+                            │
+                            ▼
+                   Saved Perception Models (.pt)
+                            │
+                            │
+=========================================================================================
+                            │
+                            ▼
+                  ONLINE DATA COLLECTION STAGE
+=========================================================================================
+
+                               ┌────────────────────┐
+                               │     MetaDrive      │
+                               └────────────────────┘
+                                         │
+                                 Built-in Expert Driver
+                                         │
+                                         ▼
+                                 Expert Drives Vehicle
+                                         │
+                                         ▼
+                     ┌──────────────────────────────────────┐
+                     │     Observation Generation           │
+                     └──────────────────────────────────────┘
+                                         │
+             ┌───────────────────────────┼────────────────────────────┐
+             │                           │                            │
+             ▼                           ▼                            ▼
+        RGB Camera                  Vehicle State             Navigation Command
+             │                           │                            │
+             └───────────────┬───────────┴───────────────┬────────────┘
+                             │                           │
+                             ▼                           ▼
+                    Load Pretrained Models       Expert Action
+                                                 (Steer,Throttle,Brake)
+                             │
+         ┌───────────────────┼─────────────────────────────┐
+         │                   │              │              │
+         ▼                   ▼              ▼              ▼
+      YOLO11            LaneNet          MiDaS      Traffic Sign Model
+         │                   │              │              │
+         └───────────────┬───┴──────────────┴───────┬──────┘
+                         ▼                          │
+               Scene Understanding                 │
+                         │                          │
+                         ▼                          │
+                World State Builder                │
+                         │                          │
+                         └──────────────┬───────────┘
+                                        ▼
+                               Dataset Recorder
+                                        │
+         ┌──────────────────────────────┼─────────────────────────────┐
+         │                              │                             │
+         ▼                              ▼                             ▼
+     Images/                    labels.csv                 metadata.json
+
+   image.png              steering,throttle,          speed,objects,
+                          brake                       lane,depth,etc.
+
+                                        │
+                                        ▼
+                             YOUR CUSTOM DATASET
+=========================================================================================
+                                        │
+                                        ▼
+                             BEHAVIOUR CLONING TRAINING
+=========================================================================================
+
+               Images + Labels + Metadata
+                         │
+                         ▼
+                    DataLoader
+                         │
+                         ▼
+          Behaviour Cloning Network (PyTorch)
+                         │
+                         ▼
+                 Behaviour Cloning Model.pt
+                         │
+                         ▼
+               Can Already Drive Vehicle - IMITATION LEARNING COMPLTETE
+
+=========================================================================================
+                         │
+                         ▼
+                 REINFORCEMENT LEARNING
+=========================================================================================
+
+          Behaviour Cloning Weights
+                     │
+                     ▼
+             Initialize PPO Policy
+                     │
+                     ▼
+                MetaDrive Again
+                     │
+                     ▼
+             AI Drives (NOT Expert)
+                     │
+                     ▼
+        Reward Function Calculates Reward
+
+        + Stay in lane
+        + Reach waypoint
+        + Smooth steering
+        - Collision
+        - Off road
+        - Hard brake
+
+                     │
+                     ▼
+             PPO Updates Policy
+                     │
+                     ▼
+          Final Autonomous Driver.pt
+
+=========================================================================================
+                         │
+                         ▼
+                     INFERENCE
+=========================================================================================
+
+                      MetaDrive
+                           │
+                    RGB Camera
+                           │
+             Load Final PPO Model
+                           │
+                           ▼
+              Steering / Brake / Throttle
+                           │
+                           ▼
+                  MetaDrive env.step(action)
+                           │
+                           ▼
+                    Vehicle Moves
+
+                           │
+────────────────────────────────────────────────────────────────────────────
+
+        (PARALLEL PERCEPTION PIPELINE DURING INFERENCE)
+
+                    RGB Camera
+                         │
+      ┌──────────────────┼─────────────────────┐
+      ▼                  ▼                     ▼
+    YOLO11          LaneNet                MiDaS
+      │                  │                     │
+      └──────────────────┴─────────────────────┘
+                         │
+                         ▼
+                Scene Understanding
+                         │
+                         ▼
+      Dashboard + Safety + Decision Explanation
+
+
+
+
+      now more new design TransFuser Pipeline
+                 CARLA
+                    │
+                    ▼
+        Privileged Autopilot (Expert)
+                    │
+                    ▼
+         Automatic Dataset Collection
+                    │
+                    ▼
+       RGB + LiDAR + Depth + Metadata
+                    │
+                    ▼
+            Behaviour Cloning
+      (Transformer Sensor Fusion)
+                    │
+                    ▼
+          End-to-End Driving Model
+                    │
+                    ▼
+      Evaluate on CARLA Leaderboard
+
+Let's map that to the phases.
+
+Phase 1 — Dataset Collection ✅
+TransFuser
+CARLA
+   │
+Autopilot
+   │
+Recorder
+   │
+210GB Dataset
+Ours
+MetaDrive
+    │
+Expert Policy
+    │
+Recorder
+    │
+Custom Dataset
+
+➡️ Almost identical.
+
+The simulator changes.
+
+The expert changes.
+
+Everything else stays the same.
+
+Phase 2 — Behaviour Cloning ✅
+TransFuser
+RGB
+
++
+
+LiDAR
+
+↓
+
+Transformer
+
+↓
+
+Steering
+Throttle
+Brake
+Ours
+RGB
+
+↓
+
+CNN / Transformer
+
+↓
+
+Steering
+Throttle
+Brake
+
+Again,
+
+same idea.
+
+Different architecture.
+
+Phase 3 — PPO ❌
+
+This is where they stop.
+
+Dataset
+
+↓
+
+Behaviour Cloning
+
+↓
+
+Finished
+
+We continue.
+
+Dataset
+
+↓
+
+Behaviour Cloning
+
+↓
+
+PPO
+
+↓
+
+Better Driver
+
+This is your biggest algorithmic difference.
+
+Phase 4 — Evaluation
+
+TransFuser DOES evaluate.
+
+But look carefully at what they evaluate.
+
+Their pipeline is
+
+Model
+
+↓
+
+CARLA Leaderboard
+
+↓
+
+Driving Score
+
+Route Completion
+
+Collisions
+
+Infractions
+
+They rely on the official CARLA benchmarks.
+
+I would build something more reusable.
+
+Run 001
+
+↓
+
+Lane Keeping
+
+Collision Rate
+
+Success Rate
+
+Average Speed
+
+Comfort Score
+
+Reward Curve
+
+Off-road %
+
+Plots
+
+CSV
+
+Video
+
+Think of it as your own lightweight benchmark suite.
+
+Phase 5 — Dashboard
+
+TransFuser doesn't really have one.
+
+During evaluation you mostly get
+
+Driving Score
+
+Success
+
+JSON files
+
+Maybe some debug images.
+
+I would build
+
+Live Dashboard
+
+FPS
+
+Speed
+
+Steering
+
+Throttle
+
+Brake
+
+Reward
+
+Episode
+
+Collision Count
+
+Much nicer for demos.
+
+Phase 6 — Experiment Recording
+
+TransFuser saves results.
+
+But it isn't designed as an experiment manager.
+
+I would automatically generate
+
+run_001/
+
+video.mp4
+
+trajectory.csv
+
+metrics.json
+
+reward.png
+
+success_curve.png
+
+Every run.
+
+That makes comparing experiments much easier.
+
+
+
+                   MetaDrive
+                       │
+        ┌──────────────┴──────────────┐
+        │                             │
+        ▼                             ▼
+   RGB Camera                  Virtual LiDAR
+        │                             │
+        ▼                             ▼
+   CNN Encoder                 LiDAR Encoder
+        │                             │
+        └──────────────┬──────────────┘
+                       ▼
+              Transformer Fusion
+                       │
+                Behaviour Cloning
+                       │
+                     PPO
+                       │
+               Steering / Throttle / Brake
+
+
+
+
+
+vision2drive/
+│
+├── simulator/
+├── sensors/
+│   ├── camera.py
+│   ├── lidar.py
+│   └── state.py
+│
+├── data_collection/
+├── datasets/
+├── models/
+│   ├── camera_encoder.py
+│   ├── lidar_encoder.py
+│   ├── fusion_transformer.py
+│   └── policy.py
+│
+├── imitation/
+├── reinforcement/
+├── evaluation/
+├── replay/
+├── dashboard/
+└── experiments/\
+
+                     MetaDrive
+                          │
+         ┌────────────────┴────────────────┐
+         │                                 │
+   Expert Policy                     Sensors
+         │                           (RGB, LiDAR,
+         │                            Vehicle State)
+         │                                 │
+         └──────────────┬──────────────────┘
+                        ▼
+                 Dataset Recorder
+                        │
+                        ▼
+                 Offline Dataset
+                        │
+                        ▼
+              Behaviour Cloning
+                        │
+                        ▼
+          Initial Driving Policy
+                        │
+                        ▼
+                PPO Fine-tuning
+                        │
+                        ▼
+            Improved Driving Policy
+                        │
+                        ▼
+                 Evaluation Suite
+                        │
+                        ▼
+        Metrics • Videos • Plots • Reports
+                        │
+                        ▼
+                 Live Dashboard
+RGB
+        │
+        ▼
+CNN
+
+LiDAR
+        │
+        ▼
+CNN
+
+↓
+
+Transformer Fusion
+
+↓
+
+Driving Head
+
+
+
+
+
+final design 
+
+
+
+
+                           Vision2Drive
+
+                              Input
+                                │
+        ┌───────────────────────┴────────────────────────┐
+        │                                                │
+        ▼                                                ▼
+   RGB Camera                                        LiDAR
+ (Front Camera)                                  Point Cloud
+        │                                                │
+        ▼                                                ▼
+  CNN Image Encoder                              CNN LiDAR Encoder
+ (ResNet/EfficientNet)                         (BEV Representation)
+        │                                                │
+        ▼                                                ▼
+  Image Feature Map                              LiDAR Feature Map
+        └───────────────────────┬────────────────────────┘
+                                │
+                                ▼
+                    Transformer Feature Fusion
+                                │
+                 ┌──────────────┴──────────────┐
+                 │                             │
+                 ▼                             ▼
+         Vehicle State                  Navigation State
+      (Speed, Steering...)         (Lane, Route Progress...)
+                 │                             │
+                 └──────────────┬──────────────┘
+                                ▼
+                       Feature Fusion MLP
+                                │
+                                ▼
+                     Shared Driving Representation
+                                │
+                   ┌────────────┴────────────┐
+                   ▼                         ▼
+             Driving Head             Auxiliary Heads
+        (Steer,Throttle,Brake)   (Optional future tasks)
+
+
+<!-- Version 1
+
+RGB: ResNet-18
+LiDAR: BEV projection + ResNet-18
+Fusion: Transformer encoder
+Driving head: MLP
+
+Version 2
+
+Replace the LiDAR encoder with PointPillars or pointpillars while keeping the rest of the architecture unchanged.
+
+Version 3
+
+Experiment with stronger backbones (ConvNeXt, Swin Transformer) or more advanced fusion mechanisms.
+
+This progression lets you validate the entire end-to-end pipeline first and then improve individual components systematically, rather than tackling every difficult problem at once. I think it's the most practical path for a project that is both educational and technically ambitious -->
+
+
+
+
+
+                           Vision2Drive
+
+                    ┌─────────────────────┐
+                    │     RGB Camera      │
+                    └──────────┬──────────┘
+                               │
+                               ▼
+                     Image Encoder
+                               │
+                               ▼
+                     RGB Feature Map
+                               │
+                               │
+                               ▼
+                         Transformer
+                               ▲
+                               │
+                               │
+                    LiDAR Feature Map
+                               ▲
+                               │
+                        LiDAR Encoder
+                               ▲
+                               │
+                     BEV Occupancy Map
+                               ▲
+                               │
+                  LiDAR Preprocessing
+                               ▲
+                               │
+                     Raw Point Cloud
+
+────────────────────────────────────────────────────────────
+
+                     Fused Feature Map
+
+                               │
+                               ▼
+
+                 Global Average Pooling
+
+                               │
+                               ▼
+
+                    Scene Representation
+                           (512-D)
+
+          ┌─────────────────┼──────────────────┐
+          │                 │                  │
+          ▼                 ▼                  ▼
+ Vehicle State      Navigation State      Scene Vector
+    Encoder             Encoder
+          │                 │
+          └──────────┬──────┘
+                     ▼
+
+                Feature Fusion
+
+                     ▼
+
+         Driving Representation (512)
+
+                     ▼
+
+               Driving Head
+
+          ┌──────────┼──────────┐
+          ▼          ▼          ▼
+
+      Steering   Throttle    Brake

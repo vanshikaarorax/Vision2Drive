@@ -1,0 +1,147 @@
+Module 1: PIDController — Vehicle Controller
+Purpose
+
+The PIDController is responsible for converting an error into a smooth control command. It is the lowest-level controller in the navigation stack. Higher-level modules decide where the vehicle should go, while the PID controller decides how strongly the vehicle should steer, accelerate, or brake to follow that decision. It continuously compares the desired state (such as the target steering angle or target speed) with the current state and outputs a correction. Without this controller, the vehicle would respond abruptly to every small error, leading to unstable or jerky driving.
+
+__init__(K_P, K_I, K_D, n)
+Purpose
+
+The constructor initializes the PID controller by storing the controller gains (K_P, K_I, K_D) and creating a history window of the last n errors. This history is required because a PID controller does not only consider the current error but also past errors (integral term) and how quickly the error is changing (derivative term). The deque is used because new errors are continuously added while old errors are discarded efficiently.
+
+step(error)
+Purpose
+
+This is the main function of the PID controller and is executed every simulation step. It receives the current control error, updates the error history, computes the proportional, integral, and derivative components, and combines them into a single correction value using the PID equation. The returned value becomes the steering correction, throttle adjustment, or brake command used by the autopilot. When debugging is enabled, the function also visualizes the recent error history as a graph to help tune the controller.
+
+save()
+Purpose
+
+This function stores the current internal state of the PID controller, specifically the history of previous errors. Since the controller's behaviour depends on past errors, preserving this state allows the autopilot to temporarily simulate future trajectories or perform look-ahead planning without permanently changing the controller's memory.
+
+load()
+Purpose
+
+This function restores the previously saved controller state. After temporary simulations or predictions have finished, the autopilot reloads the original error history so that the real driving controller continues exactly where it left off, preventing hypothetical calculations from affecting actual vehicle control.
+
+Module 2: Plotter — Debug Visualization
+Purpose
+
+The Plotter class exists purely for debugging and visualization. It is not involved in vehicle control or navigation. During development it provides a simple graphical representation of waypoints, the vehicle position, and navigation behaviour, making it easier to verify that the planner is working correctly. Since these visualizations are only useful during debugging, the class remains inactive when DEBUG = False.
+
+__init__(size)
+Purpose
+
+Initializes a blank drawing canvas of the specified size. The canvas will later be used to display waypoints, routes, and vehicle positions. It also assigns a window title based on the canvas dimensions.
+
+clear()
+Purpose
+
+Resets the drawing canvas by creating a new empty image. This function is typically called once every simulation frame so that the next visualization starts with a clean background instead of drawing over the previous frame.
+
+dot(pos, node, color, r)
+Purpose
+
+Draws a waypoint or object onto the debug canvas. The function converts world coordinates into image coordinates relative to the ego vehicle before rendering a small coloured circle. Different colours can be used to distinguish upcoming waypoints, visited waypoints, or the current vehicle position.
+
+show()
+Purpose
+
+Displays the current debug image in an OpenCV window. If debugging is disabled, the function immediately returns without doing anything. This ensures that visualization code has zero impact on normal execution.
+
+Module 3: RoutePlanner — Navigation Manager
+Purpose
+
+The RoutePlanner manages the vehicle's navigation route throughout the episode. Instead of processing the complete global route every frame, it stores the route, tracks vehicle progress, removes waypoints that have already been passed, and always returns only the remaining section of the path. This significantly reduces computation and allows the autopilot to focus only on the relevant portion of the journey.
+
+__init__(min_distance, max_distance, debug_size)
+Purpose
+
+Initializes the route planner by creating data structures to store the current route, previously saved routes, and the distances between consecutive waypoints. It also defines two important thresholds: min_distance, which determines when a waypoint is considered reached, and max_distance, which limits how far ahead the planner searches during each update. Coordinate conversion parameters are also initialized so GPS coordinates can be converted into CARLA's world coordinate system when necessary.
+
+set_route(global_plan, gps=False)
+Purpose
+
+Loads the complete global route at the beginning of an episode. The function converts each waypoint into a NumPy coordinate representation, stores the associated navigation command (such as going straight or turning left), and precomputes the distance between every pair of consecutive waypoints. Performing these distance calculations only once during initialization avoids unnecessary repeated computation during every simulation step.
+
+run_step(gps)
+Purpose
+
+This function is executed every simulation frame. It compares the vehicle's current position with the stored route, determines which waypoints have already been passed, removes obsolete waypoints from the front of the queue, and returns the updated remaining route. By continuously shortening the route, the planner always keeps the vehicle focused on the next upcoming section of the journey instead of the entire map.
+
+save()
+Purpose
+
+Stores the current navigation state, including the remaining route and all precomputed waypoint distances. This enables temporary planning operations without permanently modifying the active navigation state.
+
+load()
+Purpose
+
+Restores the previously saved navigation state. After temporary simulations or planning procedures finish, the original route is recovered so that normal navigation resumes without interruption.
+
+Module 4: Route Generation & GPS Utilities
+
+These functions are independent helper functions rather than class methods.
+
+interpolate_trajectory(world_map, waypoints_trajectory, hop_resolution, max_len)
+Purpose
+
+The route supplied by CARLA often consists of only a few sparse key waypoints, which are insufficient for smooth vehicle control. This function uses CARLA's GlobalRoutePlanner to interpolate additional intermediate waypoints between every pair of consecutive points, producing a dense trajectory that the autopilot can accurately follow. It returns both the interpolated CARLA route and its GPS representation.
+
+location_route_to_gps(route, lat_ref, lon_ref)
+Purpose
+
+Converts every waypoint in the interpolated route from CARLA world coordinates into GPS coordinates (latitude and longitude). This allows navigation information to remain compatible with Leaderboard evaluation and GPS-based localization.
+
+_get_latlon_ref(world_map)
+Purpose
+
+Extracts the geographical reference latitude and longitude from CARLA's OpenDRIVE map file. These reference values define the origin of the simulator's coordinate system and are required for accurate conversion between world coordinates and GPS coordinates.
+
+_location_to_gps(lat_ref, lon_ref, location)
+Purpose
+
+Converts a single CARLA world coordinate into GPS coordinates using the map's geographical reference and Earth's radius. This mathematical transformation produces a dictionary containing latitude, longitude, and altitude, allowing simulated vehicle positions to be represented in a standard GPS format.
+
+The complete flow of nav_planner.py
+
+Once you understand the responsibilities of each component, the entire file becomes very straightforward:
+
+Episode Starts
+      │
+      ▼
+interpolate_trajectory()
+      │
+      ▼
+Dense Route Generated
+      │
+      ▼
+RoutePlanner.set_route()
+      │
+      ▼
+Simulation Starts
+      │
+      ▼
+Every Tick
+      │
+      ▼
+Current GPS Position
+      │
+      ▼
+RoutePlanner.run_step()
+      │
+      ▼
+Next Waypoint
+      │
+      ▼
+Compute Steering/Speed Error
+      │
+      ▼
+PIDController.step()
+      │
+      ▼
+Steering / Throttle / Brake
+      │
+      ▼
+Vehicle Moves
+      │
+      └──────────► Repeat
