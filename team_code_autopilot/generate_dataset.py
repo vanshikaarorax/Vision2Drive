@@ -6,7 +6,7 @@ Runs the complete Vision2Drive dataset generation pipeline.
 Responsibilities
 ----------------
 1. Create the MetaDrive environment.
-2. Load the expert PPO policy.
+2. Use MetaDrive's built-in ExpertPolicy to drive the ego vehicle.
 3. Collect synchronized sensor data using DataAgent.
 4. Save the collected dataset using Writer.
 
@@ -14,13 +14,15 @@ Author: Vanshika
 """
 
 from typing import Optional
-
-from metadrive.envs.scenario_env import ScenarioEnv
 import time
-from config import DATASET_CONFIG
-from data_agent import DataAgent
-from writer import Writer
-from stable_baselines3 import PPO
+
+from metadrive.metadrive.envs.metadrive_env import MetaDriveEnv
+
+from .config import METADRIVE_CONFIG, DATASET_CONFIG
+from .data_agent import DataAgent
+from .writer import Writer
+
+
 class DatasetGenerator:
     """
     Orchestrates the complete dataset generation pipeline.
@@ -32,15 +34,17 @@ class DatasetGenerator:
         """
 
         # Configuration
-        self.config = DATASET_CONFIG
+        self.env_config = METADRIVE_CONFIG
+        self.dataset_config = DATASET_CONFIG
 
         # Core components
-        self.env: Optional[ScenarioEnv] = None
-        self.expert = None
+        self.env: Optional[MetaDriveEnv] = None
         self.agent: Optional[DataAgent] = None
         self.writer: Optional[Writer] = None
+
         # Statistics
         self.total_frames = 0
+        self.failed_episodes = 0
         self.start_time = 0.0
 
     # ==========================================================
@@ -48,113 +52,103 @@ class DatasetGenerator:
     # ==========================================================
 
     def run(self) -> None:
-     """
-    Run the complete dataset generation pipeline.
-    """
-     self.start_time = time.time()
-    # Initialize components
-     self._build_environment()
-     self._build_expert()
+        """
+        Run the complete dataset generation pipeline.
+        """
 
-    # Generate dataset
-     for episode_id in range(self.config["num_episodes"]):
+        self.start_time = time.time()
 
-        
-        try:
+        # Initialize components
+        self._build_environment()
 
-          self._generate_episode(episode_id)
+        # Generate dataset
+        for episode_id in range(self.dataset_config["num_episodes"]):
 
-          self.total_frames += self.writer.frame_count
+            try:
 
-        except Exception as error:
+                self._generate_episode(episode_id)
 
-          self.failed_episodes += 1
+                self.total_frames += self.writer.frame_count
 
-          print(
-            f"Episode {episode_id} failed: {error}"
-        )
+            except Exception as error:
 
-          continue
+                self.failed_episodes += 1
 
-        elapsed = time.time() - self.start_time
+                print(
+                    f"Episode {episode_id} failed: {error}"
+                )
 
-        print(
-        f"[{episode_id + 1}/{self.config['num_episodes']}] "
-        f"Frames: {self.total_frames} | "
-        f"Elapsed: {elapsed:.1f}s"
-    )
-    # Release resources
-     self._cleanup()
+                continue
+
+            elapsed = time.time() - self.start_time
+
+            print(
+                f"[{episode_id + 1}/{self.config['num_episodes']}] "
+                f"Frames: {self.total_frames} | "
+                f"Elapsed: {elapsed:.1f}s"
+            )
+
+        # Release resources
+        self._cleanup()
 
     # ==========================================================
     # Build Helpers
     # ==========================================================
 
     def _build_environment(self) -> None:
-     """
-    Create the MetaDrive environment and initialize
-    the dataset components.
-    """
-
-    # Create simulation environment
-     self.env = ScenarioEnv(self.config)
-
-    # Create data collection agent
-     self.agent = DataAgent(self.env)
-
-    # Create dataset writer
-     self.writer = Writer()
-
-    def _build_expert(self) -> None:
         """
-    Load the trained PPO expert policy.
-    """
+        Create the MetaDrive environment and initialize
+        the dataset components.
+        """
 
-        self.expert = PPO.load(
-         self.config["expert_checkpoint"]
-    )
+        # Create simulation environment
+        self.env = MetaDriveEnv(self.env_config)
+
+        # Create data collection agent
+        self.agent = DataAgent(self.env)
+
+        # Create dataset writer
+        self.writer = Writer(self.dataset_config["output_dir"])
 
     # ==========================================================
     # Dataset Generation
     # ==========================================================
 
     def _generate_episode(self, episode_id: int) -> None:
-     """
-    Generate one complete driving episode.
-    """
+        """
+        Generate one complete driving episode.
+        """
 
-    # Reset simulation
-     observation, _ = self.env.reset()
+        # Reset simulation
+        observation, _ = self.env.reset()
 
-    # Reset helper classes
-     self.agent.reset()
+        # Reset helper classes
+        self.agent.reset()
 
-     self.writer.reset(episode_id)
+        self.writer.reset(episode_id)
 
-     done = False
+        done = False
 
-     while not done:
+        while not done:
 
-        # Expert action
-        action = self._predict_action(observation)
+            # Vehicle is controlled automatically by
+            # MetaDrive's ExpertPolicy.
+            observation, reward, terminated, truncated, info = (
+                self.env.step([0.0, 0.0])
+            )
 
-        # Advance simulation
-        observation, reward, terminated, truncated, info = (
-            self.env.step(action)
-        )
+            # Capture synchronized frame
+            frame = self.agent.capture_frame()
 
-        # Capture synchronized frame
-        frame = self.agent.capture_frame()
+            # Save frame
+            self.writer.save(frame)
 
-        # Save frame
-        self.writer.save(frame)
+            # Episode finished?
+            done = terminated or truncated
 
-        # Episode finished?
-        done = terminated or truncated
+        # Finalize episode
+        self.writer.finalize_episode()
 
-    # Finalize episode
-     self.writer.finalize_episode()
-     self.total_frames += self.writer.frame_count
     # ==========================================================
     # Cleanup
     # ==========================================================
@@ -163,19 +157,9 @@ class DatasetGenerator:
         """
         Release resources before exiting.
         """
-        raise NotImplementedError
-    
-    def _predict_action(self, observation):
-     """
-    Predict the next action using the expert policy.
-    """
 
-     action, _ = self.expert.predict(
-        observation,
-        deterministic=True
-    )
-
-     return action
+        if self.env is not None:
+            self.env.close()
 
 
 def main() -> None:

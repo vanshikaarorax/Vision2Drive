@@ -123,24 +123,29 @@ class DataAgent:
     def get_vehicle_state(self) -> Dict[str, Any]:
      """
     Collect the current state of the ego vehicle.
-
-    Returns
-    -------
-    Dict[str, Any]
-        Dictionary containing the vehicle's current kinematic state.
     """
 
      vehicle = self.vehicle
 
+     throttle_brake = float(vehicle.throttle_brake)
+
      state = {
+
         "position": vehicle.position.tolist(),
+
         "heading": float(vehicle.heading_theta),
+
         "speed": float(vehicle.speed),
+
         "velocity": vehicle.velocity.tolist(),
+
         "steering": float(vehicle.steering),
-        "throttle": float(vehicle.throttle_brake),
-        "brake": float(vehicle.brake),
-    }
+
+        "throttle": max(throttle_brake, 0.0),
+
+        "brake": max(-throttle_brake, 0.0),
+
+     }
 
      return state
     
@@ -149,7 +154,7 @@ class DataAgent:
     Connect to the front RGB camera attached to the ego vehicle.
     """
 
-      self.rgb_camera = self.vehicle.image_sensors[self.RGB_SENSOR]
+      self.rgb_camera = self.engine.get_sensor("rgb")
     
 
     def capture_rgb(self):
@@ -162,7 +167,7 @@ class DataAgent:
         RGB image.
     """
 
-     return self.rgb_camera.perceive()
+     return self.rgb_camera.perceive(to_float=False)
     
     def _connect_lidar(self) -> None:
      """
@@ -174,14 +179,17 @@ class DataAgent:
     def capture_lidar(self):
      """
     Capture one LiDAR frame.
-
-    Returns
-    -------
-    np.ndarray
-        LiDAR point cloud for the current simulation step.
     """
 
-     return self.lidar.perceive()
+     lidar, _ = self.lidar.perceive(
+        self.vehicle,
+        self.engine.physics_world.dynamic_world,
+        self.vehicle.config["lidar"]["num_lasers"],
+        self.vehicle.config["lidar"]["distance"],
+        height=1.0,
+    )
+
+     return lidar
     
 
     def get_navigation_state(self) -> Dict[str, Any]:
@@ -197,18 +205,12 @@ class DataAgent:
      navigation = self.navigation
 
      nav_state = {
-
-        "current_lane": navigation.current_lane,
-
-        "current_checkpoint": navigation.current_checkpoint,
-
-        "target_checkpoint": navigation.target_checkpoint,
-
-        "route_completion": navigation.route_completion,
-
-        "next_waypoint": navigation.next_ref_lanes,
-
-    }
+    "current_lane": navigation.current_lane,
+    "current_road": navigation.current_road,
+    "next_road": navigation.next_road,
+    "route_completion": navigation.route_completion,
+    "checkpoints": navigation.checkpoints,
+}
 
      return nav_state
     
@@ -258,16 +260,11 @@ class DataAgent:
     """
 
      metadata = {
-
-        "episode_id": self.episode_id,
-
-        "frame_id": self.frame_id,
-
-        "timestamp": self.engine.global_clock,
-
-        "scenario_seed": self.env.current_seed,
-
-    }
+    "episode_id": self.episode_id,
+    "frame_id": self.frame_id,
+    "episode_step": self.engine.episode_step,
+    "scenario_seed": self.engine.current_seed,
+}
 
      return metadata
     

@@ -1,0 +1,24 @@
+{
+    "metadata": {
+        "episode_id": 4,
+        "frame_id": 0,
+        "episode_step": 1,
+        "scenario_seed": 12
+    },
+    "vehicle_state": {
+        "position": [
+            5.006824016571045,
+            3.4998462200164795
+        ],
+        "heading": -9.574064118833547e-05,
+        "speed": 0.2843920189162225,
+        "velocity": [
+            0.2843199372291565,
+            -0.006402633618563414
+        ],
+        "steering": -0.06994710597666584,
+        "throttle": 1.0,
+        "brake": 0.0
+    },
+    "navigation": {
+        "current_lane": 
